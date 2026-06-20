@@ -73,6 +73,22 @@ def test_single_domain_helper():
     assert not scope.in_scope("example.org")
 
 
+def test_permits_resolved_ip_by_domain_association(scope_file):
+    scope = Scope.from_file(scope_file)
+    # An arbitrary IP an in-scope domain resolves to is permitted for scanning,
+    # even though it matches no in-scope IP rule...
+    assert scope.permits_resolved_ip("203.0.113.99")
+    # ...unless it is explicitly excluded.
+    assert not scope.permits_resolved_ip("192.0.2.1")
+
+
+def test_single_domain_permits_its_resolved_ip():
+    # Regression: with the default no-file scope, a domain target must still be
+    # scannable at the IP it resolves to (the "no in-scope IPs resolved" bug).
+    scope = Scope.single_domain("scanme.nmap.org")
+    assert scope.permits_resolved_ip("45.33.32.156")
+
+
 def test_filter_returns_only_in_scope(scope_file):
     scope = Scope.from_file(scope_file)
     targets = ["www.example.com", "admin.example.com", "evil.com"]

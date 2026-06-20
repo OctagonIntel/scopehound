@@ -111,5 +111,20 @@ class Scope:
             return False
         return self._in.matches(target)
 
+    def permits_resolved_ip(self, ip: str) -> bool:
+        """Whether an IP reached by resolving an in-scope hostname may be scanned.
+
+        Authorising a domain authorises the host(s) it resolves to, so such an
+        IP is in scope *by association* with the in-scope hostname, unless it is
+        explicitly excluded by an out-of-scope rule (which always wins). An IP
+        that independently matches an in-scope IP rule is permitted too.
+
+        This is what lets the common "just give it a domain" workflow actually
+        port-scan the resolved host without requiring the operator to also list
+        its IP in the scope file.
+        """
+
+        return not self._out.matches(ip)
+
     def filter(self, targets: list[str]) -> list[str]:
         return [t for t in targets if self.in_scope(t)]

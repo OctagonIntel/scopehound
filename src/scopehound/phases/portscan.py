@@ -45,9 +45,13 @@ class PortScanPhase(Phase):
 
     def _resolve_hosts(self, ctx: RunContext) -> None:
         for hostname in ctx.all_hostnames():
+            # Only resolve hostnames that are themselves in scope.
+            if not ctx.scope.in_scope(hostname):
+                continue
             for ip in self._resolve(hostname):
-                # A hostname may resolve to an address outside the engagement.
-                if ctx.scope.in_scope(ip):
+                # An in-scope hostname authorises the IPs it resolves to, unless
+                # the IP is explicitly excluded (out-of-scope always wins).
+                if ctx.scope.permits_resolved_ip(ip):
                     ctx.upsert_host(ip, hostname)
 
     @staticmethod

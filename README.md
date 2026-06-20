@@ -119,6 +119,11 @@ out_scope:
 If you omit `--scope`, scopehound defaults to the target and its subdomains and
 tells you it did so — it never scans without a scope gate in place.
 
+When a hostname is in scope, the IP address(es) it resolves to are scanned as
+well — that's how port-scanning a domain works. If you need to keep specific
+resolved addresses off-limits (shared infrastructure, a load balancer, etc.),
+list them under `out_scope.ips`; out-of-scope rules always win.
+
 ## Output
 
 ```
