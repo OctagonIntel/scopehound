@@ -1,8 +1,15 @@
 """Phase 4 - HTTP probing.
 
-Builds candidate URLs from the open web-ish ports found earlier, feeds them to
-ProjectDiscovery's httpx over stdin, and records every live endpoint with its
-status code, title, server banner and detected technologies.
+Builds candidate URLs two ways - from the web-ish ports found by the port-scan
+phase, and by probing every in-scope hostname directly on the standard web
+ports (80/443) - then feeds them to ProjectDiscovery's httpx over stdin and
+records every live endpoint with its status code, title, server banner and
+detected technologies.
+
+The direct-probe path means HTTP analysis still works when no port scan ran
+(``-p httpprobe``) or when the scan was filtered - common for hardened and
+cloud-hosted targets, where a raw port scan is dropped but the site answers
+normal HTTP requests fine.
 
 Note the binary name collision: ``httpx`` is also the Python HTTP library's
 CLI. We always invoke the configured binary (default ``httpx``) and
@@ -49,9 +56,20 @@ class HttpProbePhase(Phase):
         live = self._parse(ctx, result.stdout)
         return f"{live} live HTTP service(s) from {len(urls)} candidate URL(s)"
 
+    @staticmethod
+    def _format_url(scheme: str, host: str, port: int) -> str:
+        # Drop the port for scheme defaults so direct and port-scan-derived
+        # URLs for the same endpoint de-duplicate cleanly.
+        if (scheme, port) in (("http", 80), ("https", 443)):
+            return f"{scheme}://{host}"
+        return f"{scheme}://{host}:{port}"
+
     def _candidate_urls(self, ctx: RunContext) -> set[str]:
         web_ports = set(ctx.settings.web_ports)
         urls: set[str] = set()
+
+        # (a) Web-ish ports discovered by the port-scan phase (also covers
+        #     non-standard ports like 8080/8443).
         for host in ctx.hosts:
             names = host.hostnames or [host.ip]
             for port in host.ports:
@@ -60,7 +78,16 @@ class HttpProbePhase(Phase):
                     continue
                 scheme = "https" if port.number in (443, 8443) else "http"
                 for name in names:
-                    urls.add(f"{scheme}://{name}:{port.number}")
+                    urls.add(self._format_url(scheme, name, port.number))
+
+        # (b) Direct probe of in-scope hostnames on the standard web ports, so
+        #     HTTP analysis works even with no (or a filtered) port scan.
+        for hostname in ctx.all_hostnames():
+            if not ctx.scope.in_scope(hostname):
+                continue
+            urls.add(f"http://{hostname}")
+            urls.add(f"https://{hostname}")
+
         return urls
 
     def _parse(self, ctx: RunContext, stdout: str) -> int:

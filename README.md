@@ -93,6 +93,11 @@ scopehound run example.com --scope scope.yaml -o ./engagement-output
 # Run only specific phases (still feed forward in order)
 scopehound run example.com -p subdomains -p portscan
 
+# Cloud-hosted target (Vercel/Netlify/etc.): skip the port scan and probe HTTP
+# directly. httpprobe falls back to 80/443 on each in-scope host, so you still
+# get live services + screenshots without scanning shared provider infrastructure.
+scopehound run yourapp.example.com -p subdomains -p httpprobe -p screenshots
+
 # Include amass passive enumeration
 scopehound run example.com --amass
 ```
