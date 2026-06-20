@@ -1,0 +1,27 @@
+# scopehound scope definition
+# ---------------------------------------------------------------------------
+# Every host scopehound touches is checked against this file BEFORE any active
+# action (scanning, probing, screenshotting). Out-of-scope rules ALWAYS win
+# over in-scope rules, so you can include a broad range and carve exclusions
+# out of it. Keep this file under version control with your engagement notes.
+#
+# Domain matching:
+#   - "example.com"     matches exactly that host
+#   - "*.example.com"   matches any subdomain (a.example.com, b.a.example.com)
+#                       but NOT the apex; list the apex separately if needed.
+# IP matching:
+#   - single addresses ("192.0.2.10") or CIDR ranges ("192.0.2.0/24"),
+#     IPv4 and IPv6.
+
+in_scope:
+  domains:
+    - example.com
+    - "*.example.com"
+  ips:
+    - 192.0.2.0/24
+
+out_scope:
+  domains:
+    - admin.example.com        # client asked us not to touch the admin panel
+  ips:
+    - 192.0.2.1                # gateway / shared infrastructure
