@@ -1,5 +1,9 @@
 # scopehound
 
+[![CI](https://github.com/OctagonIntel/scopehound/actions/workflows/ci.yml/badge.svg)](https://github.com/OctagonIntel/scopehound/actions/workflows/ci.yml)
+[![Python](https://img.shields.io/badge/python-3.10%2B-blue)](https://www.python.org/)
+[![License: MIT](https://img.shields.io/badge/license-MIT-green)](LICENSE)
+
 **Scope-aware recon automation for authorized web penetration testing engagements.**
 
 scopehound chains the standard recon phases into one repeatable pipeline —
@@ -120,6 +124,53 @@ output/example.com-20260620-101500/
 ├── raw/                # raw tool output (subfinder.txt, nmap XML, httpx.jsonl)
 └── screenshots/        # one PNG per live host
 ```
+
+### Example run
+
+```console
+$ scopehound run example.com --scope scope.yaml
+╭───────────────────────────────────────────────╮
+│ scopehound v0.1.0 - authorized-recon use only │
+╰───────────────────────────────────────────────╯
+Output: output/example.com-20260620-124832
+
+> subdomains: Passive subdomain enumeration (subfinder, optional amass)
+  ok - 14 in-scope subdomains (2 out-of-scope dropped)
+> portscan: Resolve hosts and scan top ports with nmap
+  ok - 23 open ports across 6 host(s)
+> fingerprint: Service/version detection on open ports (nmap -sV)
+  ok - fingerprinted 23 service(s)
+> httpprobe: Probe live HTTP(S) services with httpx
+  ok - 9 live HTTP service(s) from 18 candidate URL(s)
+> screenshots: Capture screenshots of live hosts (Playwright/Chromium)
+  ok - captured 9 screenshot(s), 0 failed
+```
+
+`results.json` then contains the full structured run state:
+
+```json
+{
+  "manifest": {
+    "tool": "scopehound",
+    "version": "0.1.0",
+    "target": "example.com",
+    "summary": { "subdomains": 14, "hosts": 6, "open_ports": 23,
+                 "http_services": 9, "screenshots": 9 }
+  },
+  "hosts": [
+    {
+      "ip": "192.0.2.10",
+      "hostnames": ["www.example.com"],
+      "ports": [
+        { "number": 443, "service": "https", "product": "nginx", "version": "1.25.3" }
+      ]
+    }
+  ]
+}
+```
+
+> The numbers above are illustrative of the output format. Missing tools cause
+> their phase to report `skipped` instead of `ok`.
 
 ## Configuration (optional)
 
