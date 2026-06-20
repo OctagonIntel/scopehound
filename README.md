@@ -72,6 +72,10 @@ Check what's wired up:
 scopehound doctor
 ```
 
+> **Reproducible install:** `pyproject.toml` declares flexible version ranges.
+> For the exact versions this release was tested against, install from the
+> pinned lockfile: `pip install -r requirements.lock`.
+
 > **httpx name collision:** the Python `httpx` HTTP library also ships a CLI
 > called `httpx`. scopehound wants *ProjectDiscovery's* httpx. `doctor` detects
 > the collision and warns you; point it at the right binary with a config file
@@ -199,6 +203,12 @@ The architecture is intentionally modular: each phase is a `Phase` subclass in
 [`src/scopehound/phases/`](src/scopehound/phases) that reads from and writes to
 a shared `RunContext`. Adding a phase is: subclass `Phase`, implement
 `execute()`, register it in `phases/__init__.py`.
+
+## Security & responsible use
+
+scopehound is for **authorized** testing only. The scope gate is a safety aid,
+not a substitute for permission. See [SECURITY.md](SECURITY.md) for the
+responsible-use policy and how to report a vulnerability in the tool itself.
 
 ## License
 
