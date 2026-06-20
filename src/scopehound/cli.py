@@ -3,7 +3,6 @@
 from __future__ import annotations
 
 from pathlib import Path
-from typing import Optional
 
 import typer
 from rich.console import Console
@@ -24,7 +23,7 @@ app = typer.Typer(
 )
 console = Console()
 
-_BANNER = "[bold cyan]scopehound[/] [dim]v%s[/] - authorized-recon use only" % __version__
+_BANNER = f"[bold cyan]scopehound[/] [dim]v{__version__}[/] - authorized-recon use only"
 
 _STATUS_STYLE = {"ok": "green", "skipped": "yellow", "error": "red"}
 
@@ -38,7 +37,7 @@ def version() -> None:
 
 @app.command()
 def doctor(
-    config: Optional[Path] = typer.Option(None, "--config", help="Settings YAML file."),
+    config: Path | None = typer.Option(None, "--config", help="Settings YAML file."),
 ) -> None:
     """Check which external tools are installed and ready."""
 
@@ -76,16 +75,16 @@ def doctor(
 @app.command()
 def run(
     target: str = typer.Argument(..., help="Target apex domain, e.g. example.com"),
-    scope: Optional[Path] = typer.Option(
+    scope: Path | None = typer.Option(
         None, "--scope", "-s", help="Scope YAML file. If omitted, target + its subdomains."
     ),
-    output: Optional[Path] = typer.Option(
+    output: Path | None = typer.Option(
         None, "--output", "-o", help="Output directory (default: output/<target>-<timestamp>)."
     ),
-    phases: Optional[list[str]] = typer.Option(
+    phases: list[str] | None = typer.Option(
         None, "--phase", "-p", help=f"Run only these phases. Choices: {', '.join(PHASE_NAMES)}"
     ),
-    config: Optional[Path] = typer.Option(None, "--config", help="Settings YAML file."),
+    config: Path | None = typer.Option(None, "--config", help="Settings YAML file."),
     use_amass: bool = typer.Option(False, "--amass", help="Also run amass passive enum."),
 ) -> None:
     """Run the recon pipeline (or a subset of phases) against TARGET."""

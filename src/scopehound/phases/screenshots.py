@@ -65,7 +65,11 @@ class ScreenshotPhase(Phase):
     def _capture(self, browser_context, url, out_path, ctx: RunContext) -> bool:
         page = browser_context.new_page()
         try:
-            page.goto(url, timeout=ctx.settings.screenshot_timeout_ms, wait_until="domcontentloaded")
+            page.goto(
+                url,
+                timeout=ctx.settings.screenshot_timeout_ms,
+                wait_until="domcontentloaded",
+            )
             page.screenshot(path=str(out_path), full_page=False)
             return True
         except Exception:  # noqa: BLE001 - a dead/slow host shouldn't stop the run
