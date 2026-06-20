@@ -138,7 +138,8 @@ def run(
         Panel.fit(
             f"[green]Done.[/]\n"
             f"JSON:     {ctx.output_dir / 'results.json'}\n"
-            f"Markdown: {ctx.output_dir / 'report.md'}",
+            f"Markdown: {ctx.output_dir / 'report.md'}\n"
+            f"HTML:     {ctx.output_dir / 'report.html'}",
             title="Reports",
         )
     )

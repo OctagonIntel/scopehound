@@ -6,6 +6,7 @@ tool). ``report.md`` is the engagement-friendly summary.
 
 from __future__ import annotations
 
+import html as _html
 import json
 from datetime import datetime, timezone
 
@@ -14,6 +15,7 @@ from scopehound.context import RunContext
 
 JSON_FILENAME = "results.json"
 MARKDOWN_FILENAME = "report.md"
+HTML_FILENAME = "report.html"
 
 
 def _manifest(ctx: RunContext) -> dict:
@@ -130,5 +132,150 @@ def write_markdown(ctx: RunContext) -> str:
     return str(path)
 
 
-def write_all(ctx: RunContext) -> tuple[str, str]:
-    return write_json(ctx), write_markdown(ctx)
+_HTML_CSS = """
+:root { color-scheme: dark; }
+* { box-sizing: border-box; }
+body { margin: 0; font-family: system-ui, -apple-system, "Segoe UI", sans-serif;
+       background: #0e1116; color: #e6edf3; line-height: 1.5; padding-bottom: 4rem; }
+header { background: #161b22; border-bottom: 1px solid #30363d; padding: 1.5rem 2rem; }
+h1 { margin: 0; font-size: 1.6rem; color: #58a6ff; }
+h2 {
+  margin: 2rem 0 .75rem; font-size: 1.2rem;
+  border-bottom: 1px solid #30363d; padding-bottom: .35rem;
+}
+h3 { margin: 1.25rem 0 .4rem; font-family: ui-monospace, monospace; font-size: 1rem; }
+section { padding: 0 2rem; }
+.sub { color: #8b949e; margin-top: .35rem; font-size: .9rem; }
+.muted { color: #8b949e; font-weight: normal; }
+.cards { display: flex; flex-wrap: wrap; gap: 1rem; padding-top: 1.5rem; }
+.card { background: #161b22; border: 1px solid #30363d; border-radius: 10px;
+        padding: 1rem 1.4rem; min-width: 120px; text-align: center; }
+.card .num { font-size: 1.8rem; font-weight: 700; color: #58a6ff; }
+.card .lbl { color: #8b949e; font-size: .8rem; text-transform: uppercase; letter-spacing: .04em; }
+table { width: 100%; border-collapse: collapse; margin: .25rem 0; font-size: .9rem; }
+th, td { text-align: left; padding: .5rem .6rem; border-bottom: 1px solid #21262d; }
+th {
+  color: #8b949e; font-weight: 600; text-transform: uppercase;
+  font-size: .72rem; letter-spacing: .04em;
+}
+.badge { padding: .1rem .55rem; border-radius: 999px; font-size: .75rem; font-weight: 600; }
+.badge.ok { background: #10301c; color: #3fb950; }
+.badge.skipped { background: #3a2c10; color: #d29922; }
+.badge.error { background: #3a1212; color: #f85149; }
+.gallery {
+  display: grid; gap: 1.2rem; margin-top: .5rem;
+  grid-template-columns: repeat(auto-fill, minmax(320px, 1fr));
+}
+.svc { background: #161b22; border: 1px solid #30363d; border-radius: 10px; overflow: hidden; }
+.svc img {
+  width: 100%; height: 200px; display: block;
+  object-fit: cover; object-position: top; background: #0e1116;
+}
+.svc .noshot {
+  height: 200px; display: flex; align-items: center; justify-content: center;
+  color: #8b949e; background: #0e1116;
+}
+.svc .meta { padding: .7rem .9rem; }
+.svc .url { color: #58a6ff; text-decoration: none; font-weight: 600; word-break: break-all; }
+.svc .meta .muted { font-size: .82rem; margin-top: .2rem; }
+footer { padding: 2rem; color: #8b949e; font-size: .8rem; }
+a { color: #58a6ff; }
+"""
+
+
+def _esc(value) -> str:
+    return _html.escape("" if value is None else str(value))
+
+
+def write_html(ctx: RunContext) -> str:
+    """Write a self-contained, browser-viewable HTML report.
+
+    Screenshots are referenced by their relative path, so the file is portable
+    as long as it travels alongside the ``screenshots/`` directory (i.e. the
+    whole output folder). No web server or external assets are required.
+    """
+
+    data = to_dict(ctx)
+    manifest = data["manifest"]
+    summary = manifest["summary"]
+
+    cards = "".join(
+        f'<div class="card"><div class="num">{summary[key]}</div>'
+        f'<div class="lbl">{label}</div></div>'
+        for key, label in [
+            ("subdomains", "Subdomains"),
+            ("hosts", "Hosts"),
+            ("open_ports", "Open ports"),
+            ("http_services", "HTTP services"),
+            ("screenshots", "Screenshots"),
+        ]
+    )
+
+    phase_rows = "".join(
+        f"<tr><td>{_esc(p['name'])}</td>"
+        f'<td><span class="badge {_esc(p["status"])}">{_esc(p["status"])}</span></td>'
+        f"<td>{_esc(p['detail'])}</td></tr>"
+        for p in manifest["phases"]
+    )
+
+    host_sections = []
+    for host in data["hosts"]:
+        port_rows = "".join(
+            f"<tr><td>{p['number']}/{_esc(p['protocol'])}</td>"
+            f"<td>{_esc(p['service']) or '-'}</td><td>{_esc(p['product']) or '-'}</td>"
+            f"<td>{_esc(p['version']) or '-'}</td></tr>"
+            for p in host["ports"]
+        ) or '<tr><td colspan="4">No open ports.</td></tr>'
+        host_sections.append(
+            f"<h3>{_esc(host['ip'])} "
+            f'<span class="muted">{_esc(", ".join(host["hostnames"]))}</span></h3>'
+            "<table><thead><tr><th>Port</th><th>Service</th><th>Product</th>"
+            f"<th>Version</th></tr></thead><tbody>{port_rows}</tbody></table>"
+        )
+    hosts_html = "".join(host_sections) or '<p class="muted">No hosts.</p>'
+
+    svc_cards = []
+    for svc in data["http_services"]:
+        if svc["screenshot"]:
+            shot = (
+                f'<a href="{_esc(svc["screenshot"])}" target="_blank">'
+                f'<img src="{_esc(svc["screenshot"])}" alt="screenshot of {_esc(svc["url"])}"></a>'
+            )
+        else:
+            shot = '<div class="noshot">no screenshot</div>'
+        techs = ", ".join(svc["technologies"]) or "-"
+        svc_cards.append(
+            f'<div class="svc">{shot}<div class="meta">'
+            f'<a class="url" href="{_esc(svc["url"])}" target="_blank">{_esc(svc["url"])}</a>'
+            f'<div class="muted">{_esc(svc["status_code"])} &middot; '
+            f'{_esc(svc["title"]) or "-"}</div>'
+            f'<div class="muted">{_esc(svc["webserver"]) or "-"}</div>'
+            f'<div class="muted">{_esc(techs)}</div></div></div>'
+        )
+    svc_html = "".join(svc_cards) or '<p class="muted">No live HTTP services.</p>'
+
+    document = (
+        "<!doctype html>\n<html lang=\"en\"><head><meta charset=\"utf-8\">"
+        '<meta name="viewport" content="width=device-width, initial-scale=1">'
+        f"<title>scopehound report - {_esc(manifest['target'])}</title>"
+        f"<style>{_HTML_CSS}</style></head><body>"
+        '<header><h1>scopehound <span class="muted">report</span></h1>'
+        f'<div class="sub">Target <strong>{_esc(manifest["target"])}</strong> &middot; '
+        f"generated {_esc(manifest['generated_at'])} &middot; "
+        f"v{_esc(manifest['version'])}</div></header>"
+        f'<section class="cards">{cards}</section>'
+        "<section><h2>Phases</h2><table><thead><tr><th>Phase</th><th>Status</th>"
+        f"<th>Detail</th></tr></thead><tbody>{phase_rows}</tbody></table></section>"
+        f"<section><h2>Hosts &amp; open ports</h2>{hosts_html}</section>"
+        f'<section><h2>Live HTTP services</h2><div class="gallery">{svc_html}</div></section>'
+        '<footer class="muted">Generated by scopehound &mdash; authorized-recon use only.</footer>'
+        "</body></html>"
+    )
+
+    path = ctx.output_dir / HTML_FILENAME
+    path.write_text(document, encoding="utf-8")
+    return str(path)
+
+
+def write_all(ctx: RunContext) -> tuple[str, str, str]:
+    return write_json(ctx), write_markdown(ctx), write_html(ctx)

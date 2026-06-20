@@ -57,3 +57,31 @@ def test_write_markdown_contains_sections(tmp_path):
     assert "# Recon report - example.com" in md
     assert "## Hosts & open ports" in md
     assert "https://www.example.com" in md
+
+
+def test_write_html_is_self_contained(tmp_path):
+    path = report.write_html(_ctx(tmp_path))
+    html_doc = (tmp_path / "report.html").read_text(encoding="utf-8")
+    assert path.endswith("report.html")
+    assert html_doc.startswith("<!doctype html>")
+    # inline styles, no external asset references
+    assert "<style>" in html_doc
+    assert "https://www.example.com" in html_doc
+    # screenshot referenced by relative path
+    assert 'src="screenshots/' not in html_doc or "screenshots/" in html_doc
+
+
+def test_write_all_emits_three_files(tmp_path):
+    json_path, md_path, html_path = report.write_all(_ctx(tmp_path))
+    assert (tmp_path / "results.json").exists()
+    assert (tmp_path / "report.md").exists()
+    assert (tmp_path / "report.html").exists()
+
+
+def test_html_escapes_untrusted_fields(tmp_path):
+    ctx = _ctx(tmp_path)
+    ctx.http_services[0].title = '<script>alert(1)</script>'
+    report.write_html(ctx)
+    html_doc = (tmp_path / "report.html").read_text(encoding="utf-8")
+    assert "<script>alert(1)</script>" not in html_doc
+    assert "&lt;script&gt;" in html_doc

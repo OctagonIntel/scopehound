@@ -125,6 +125,7 @@ tells you it did so — it never scans without a scope gate in place.
 output/example.com-20260620-101500/
 ├── results.json        # full structured run state (source of truth)
 ├── report.md           # human-readable summary with embedded screenshots
+├── report.html         # self-contained browser report (screenshot gallery + tables)
 ├── raw/                # raw tool output (subfinder.txt, nmap XML, httpx.jsonl)
 └── screenshots/        # one PNG per live host
 ```
